@@ -9,6 +9,8 @@ import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.server.util.*
+import sun.rmi.runtime.Log
+import java.util.logging.Logger
 
 fun Application.configureRouting() {
     
@@ -44,13 +46,32 @@ fun Application.configureRouting() {
                 // Show an article with a specific id
                 val id = call.parameters.getOrFail("id").toInt()
                 val article = articles.find { it.id == id }
-                call.respond(FreeMarkerContent("index.ftl", mapOf("articles" to mutableListOf(article))))
+                call.respond(FreeMarkerContent("show.ftl", mapOf("article" to articles.find { it.id == id})))
             }
             get("{id}/edit") {
                 // Show a page with fields for editing an article
+                val id = call.parameters.getOrFail("id").toInt()
+                val article = articles.find {it.id == id}
+                call.respond(FreeMarkerContent("edit.ftl", mapOf("article" to article)))
             }
             post("{id}") {
                 // Update or delete an article
+                val formParameters = call.receiveParameters()
+                val id = call.parameters.getOrFail("id").toInt()
+                when(formParameters.getOrFail("_action")){
+                    "update" ->{
+                        val index = articles.indexOf(articles.find { it.id == id })
+                        val title = formParameters.getOrFail("title")
+                        val body = formParameters.getOrFail("body")
+                        articles[index].title = title
+                        articles[index].body = body
+                        call.respondRedirect("/articles/${id}")
+                    }
+                    "delete" -> {
+                        articles.removeIf { it.id == id }
+                        call.respondRedirect("/articles")
+                    }
+                }
             }
 
         }
